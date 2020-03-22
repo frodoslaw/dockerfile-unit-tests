@@ -1,11 +1,23 @@
-def test_user_is_present(host):
-    user_name = 'application'
-    group_name = 'application'
-    home_dir = '/home/application'
-    shell = '/bin/ash'
+import pytest
+import subprocess
+import testinfra
 
-    usr = host.user(user_name)
-    assert user_name in usr.name
-    assert group_name in usr.group
-    assert home_dir in usr.home
-    assert shell in usr.shell
+
+# scope='session' uses the same container for all the tests;
+# scope='function' uses a new container per test function.
+@pytest.fixture(scope='session')
+def host(request):
+    # build local ./Dockerfile
+    subprocess.check_call(['docker', 'build', '-t', 'myimage', '.'])
+    # run a container
+    docker_id = subprocess.check_output(
+        ['docker', 'run', '-d', 'myimage']).decode().strip()
+    # return a testinfra connection to the container
+    yield testinfra.get_host("docker://" + docker_id)
+    # at the end of the test suite, destroy the container
+    subprocess.check_call(['docker', 'rm', '-f', docker_id])
+
+
+def test_myimage(host):
+    # 'host' now binds to the container
+    assert host.check_output('myapp -v') == 'Myapp 1.0'
