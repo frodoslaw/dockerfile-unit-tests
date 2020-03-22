@@ -1,2 +1,2 @@
 script:
-    -  test.sh
+    -  ./test.sh dockerfile-unit-tests
